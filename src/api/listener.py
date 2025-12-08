@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request
 from datetime import datetime
 import threading
+from core.logger import logger
 
 
 
@@ -33,7 +34,7 @@ class WSLBackend:
             data = request.json or {}
             intent = data.get("intent")
             payload = data.get("payload", {})
-            print(f"[WSLBackend] Intent received: {intent}, payload: {payload}")
+            logger.info(f"[WSLBackend] Intent received: {intent}, payload: {payload}")
             # TODO: Implement real intent handling logic
             return jsonify({"status": "received", "intent": intent})
         
@@ -46,11 +47,11 @@ class WSLBackend:
         if not self.server_thread:
             self.server_thread = threading.Thread(target=self._run, daemon=True)
             self.server_thread.start()
-            print(f"WSL backend running at http://{self.host}:{self.port}")
+            logger.info(f"WSL backend running at http://{self.host}:{self.port}")
 
 
     def stop(self):
-        print("WSL backend stop requested (implement /shutdown route if needed)")
+        logger.info("WSL backend stop requested (implement /shutdown route if needed)")
         if self.server_thread:
             self.server_thread.join(timeout=2)
             self.server_thread = None
