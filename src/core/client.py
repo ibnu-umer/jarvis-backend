@@ -1,6 +1,6 @@
 import requests
 import subprocess
-from core.logger import logger
+from src.core.logger import logger
 
 
 class WindowsClient:
@@ -43,9 +43,8 @@ class WindowsClient:
         try:
             resp = requests.get(url, timeout=timeout)
             resp.raise_for_status()
-            modules = resp.json().get("modules", {})
-            logger.info(f"Loaded action registry with {len(modules)} modules")
-            return modules
+            logger.info(f"Loaded action registry")
+            return resp.json()
         except requests.RequestException as e:
             logger.error(f"Failed to load registry from {self.base_url}: {str(e)}")
             return {}
