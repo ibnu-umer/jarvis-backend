@@ -1,40 +1,40 @@
 command,intent
-shut down the computer, shutdown
-turn off the pc right now, shutdown
-power off this machine, shutdown
-kill the system, shutdown
-shut this thing down immediately, shutdown
-turn the computer off, shutdown
-cut the power, shutdown
-shut it down, shutdown
-i need you to shut down the pc, shutdown
-please power down the system, shutdown
-end everything and shut the computer down, shutdown
-can you turn the system off, shutdown
-switch off the computer, shutdown
-power down this device, shutdown
-go ahead and shut it off, shutdown
-execute shutdown sequence, shutdown
-stop the machine and turn it off, shutdown
-i want the computer to shut down, shutdown
-shutdown now, shutdown
-bring the pc to a full stop, shutdown
-terminate the system entirely, shutdown
-restart the computer, restart
-reboot this pc right now, restart
-i need a full system restart, restart
-can you restart the , restart
-reboot the system immediately, restart
-please restart the computer, restart
-do a complete reboot, restart
-kick off a restart, restart
-initiate reboot sequence, restart
-restart everything from scratch, restart
-start the system over, restart
-reboot the whole device, restart
-cycle the power and restart, restart
-perform a system restart, restart
-restart this thing, restart
+"shut down the computer","shutdown"
+"turn off the pc right now","shutdown"
+"power off this machine","shutdown"
+"kill the system","shutdown"
+"shut this thing down immediately","shutdown"
+"turn the computer off","shutdown"
+"cut the power","shutdown"
+"shut it down","shutdown"
+"i need you to shut down the pc","shutdown"
+"please power down the system","shutdown"
+"end everything and shut the computer down","shutdown"
+"can you turn the system off","shutdown"
+"switch off the computer","shutdown"
+"power down this device","shutdown"
+"go ahead and shut it off","shutdown"
+"execute shutdown sequence","shutdown"
+"stop the machine and turn it off","shutdown"
+"i want the computer to shut down","shutdown"
+"shutdown now","shutdown"
+"bring the pc to a full stop","shutdown"
+"terminate the system entirely","shutdown"
+"restart the computer","restart"
+"reboot this pc right now","restart"
+"i need a full system restart","restart"
+"can you restart the system","restart"
+"reboot the system immediately","restart"
+"please restart the computer","restart"
+"do a complete reboot","restart"
+"kick off a restart","restart"
+"initiate reboot sequence","restart"
+"restart everything from scratch","restart"
+"start the system over","restart"
+"reboot the whole device","restart"
+"cycle the power and restart","restart"
+"perform a system restart","restart"
+"restart this thing", "restart"
 "i want you to reboot it", "restart"
 "force a restart now", "restart"
 "reboot the computer asap", "restart"
