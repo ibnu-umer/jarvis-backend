@@ -1,6 +1,6 @@
 from rapidfuzz import process
 from pathlib import Path
-import json
+import json, pyperclip, os
 from configs.config import TEMPLATES_PATH
 
 
@@ -28,7 +28,7 @@ class Planner:
             if self._should_handle_running(action, results):
                 self._execute_running_action(action, results)
                 continue
-            print(">>>>>>>", action.get("params", {}))
+
             params = self._resolve_params(action.get("params", {}), results, user_input)
             output = self._execute_action(action, params)
 
@@ -92,13 +92,12 @@ class Planner:
 
         # client-side Windows action
         res = self.client.trigger(action["action"], params)
-        # print(res)
 
         fetch = action.get("fetch")
         if fetch:
             return res["result"]["data"].get(fetch)
 
-        return None
+        return res["result"]["data"]
 
   
     # ---------------------- INTERNAL FUNCTIONS ----------------------
@@ -113,29 +112,62 @@ class Planner:
         return match
 
 
-    def build_path(self, parent_name: str, folder: str) -> str:
-        base = self.file_registry.get(parent_name)
-        if not base:
-            raise ValueError(f"No base path found for: {parent_name}")
+    def build_path(self, parent_name: str = None, folder: str = None, path: str = None) -> str:
+        if path:
+            path = path.strip()
 
-        if not folder:
-            raise ValueError("Folder name required")
+            # Convert Windows path → WSL accessible
+            if ":" in path and "\\" in path:
+                # Windows → /mnt/c style
+                drive = path[0].lower()
+                rest = path[2:].replace("\\", "/")
+                wsl_path = f"/mnt/{drive}/{rest}"
 
-        base_str = str(base)
+                # optional check (works in WSL for both files/folders)
+                exists = os.path.exists(wsl_path)
 
-        # WSL-style /mnt/
-        if base_str.startswith("/mnt/"):
-            return f"{base_str.rstrip('/')}/{folder}"
+                return wsl_path if exists else path  # fallback to original
 
-        # UNC WSL \\wsl$\
-        if base_str.lower().startswith("\\\\wsl$"):
-            return f"{base_str.rstrip('\\\\')}/{folder}".replace("/", "\\")
+            # Already WSL-style path
+            if path.startswith("/") and os.path.exists(path):
+                return path
 
-        # Windows paths C:\
-        if ":" in base_str:
-            return str(Path(base_str) / folder)
+            return path
 
-        raise ValueError(f"Unrecognized path format: {base_str}")
+
+        if parent_name and not folder:
+            base = self.file_registry.get(parent_name)
+            if not base:
+                raise ValueError(f"No base path found for: {parent_name}")
+            return str(base)
+
+
+        if parent_name and folder:
+            base = self.file_registry.get(parent_name)
+            if not base:
+                raise ValueError(f"No base path found for: {parent_name}")
+
+            base_str = str(base)
+
+            # WSL Unix: /mnt/c/projects
+            if base_str.startswith("/mnt/"):
+                return f"{base_str.rstrip('/')}/{folder}"
+
+            # UNC (Windows path exposed to WSL): \\wsl$
+            if base_str.lower().startswith("\\\\wsl$"):
+                return f"{base_str.rstrip('\\')}\\{folder}"
+
+            # Windows-style path: C:\projects
+            if ":" in base_str:
+                win = str(Path(base_str) / folder)
+                # Convert to WSL so WSL-side can verify load-it
+                drive = win[0].lower()
+                rest = win[2:].replace("\\", "/")
+                return f"/mnt/{drive}/{rest}"
+
+            raise ValueError(f"Unrecognized path format: {base_str}")
+
+        raise ValueError("Invalid path arguments")
     
 
     def find_instance(self, instances, query, key=None):
@@ -144,3 +176,50 @@ class Planner:
             if value and query in value:
                 return inst
         return None
+
+
+    def get_folder_name(self, instance: dict):
+        title = instance.get("title")
+        name_part = title.split("-")[1]
+        return name_part.replace("[WSL: Ubuntu]", "") if "[WSL: Ubuntu]" in name_part else name_part
+
+
+    def get_copied_path(self):
+        try:
+            copied_path = pyperclip.paste().strip()
+            return self.build_path(path=copied_path)
+        except Exception as e:
+            return None
+        
+
+    def resolve_path(self, path: str):
+        if not path:
+            raise ValueError("No path provided")
+
+        raw_path = path.strip()
+
+        # Convert Windows path to WSL style for existence check
+        check_path = raw_path
+        if ":" in raw_path and "\\" in raw_path:
+            drive = raw_path[0].upper()
+            rest = raw_path[2:].replace("\\", "/")
+            check_path = f"/mnt/{drive.lower()}/{rest}"
+
+        path_obj = Path(check_path)
+
+        if not path_obj.exists():
+            raise ValueError(f"Path does not exist: {raw_path}")
+
+        # Convert back to Windows-style for return
+        def to_windows(p: Path):
+            p_str = str(p)
+            if p_str.startswith("/mnt/") and len(p_str) > 5:
+                drive_letter = p_str[5].upper()
+                rest = p_str[7:].replace("/", "\\")
+                return f"{drive_letter}:\\" + rest
+            return str(p)
+
+        if path_obj.is_file():
+            return {"folder": to_windows(path_obj.parent), "file": path_obj.name}
+
+        return {"folder": to_windows(path_obj), "file": None}
