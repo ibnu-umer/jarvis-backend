@@ -50,13 +50,18 @@ class Planner:
 
                 elif raw_val.startswith("@"):
                     var_name = raw_val[1:]
-                    params[key] = user_input if var_name == "user_input" else results.get(var_name)
+                    if "::" in var_name:
+                        var_name, key_arg = var_name.split("::")
+                        params[key] = results[var_name].get(key_arg)
+                        print(">>>>>>>", key, results[var_name].get(key_arg))
+                    else:
+                        params[key] = user_input if var_name == "user_input" else results.get(var_name)
 
                 else:
                     params[key] = raw_val
             else:
                 params[key] = raw_val
-
+        
         return params
 
 
