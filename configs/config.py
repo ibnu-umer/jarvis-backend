@@ -10,3 +10,4 @@ WSL_BASE_URL = f"http://{WSL_HOST}:{WSL_PORT}"
 
 
 LOG_FILE = "logs/backend.log"
+TEMPLATES_PATH = "configs/templates.json"

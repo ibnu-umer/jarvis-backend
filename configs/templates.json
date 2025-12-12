@@ -1,0 +1,64 @@
+{
+    "start_project": [
+        {
+            "action": "list_folder_contents",
+            "params": { "folder_name": "projects" },
+            "store_as": "project_folders",
+            "fetch": "folders"
+        },
+        {
+            "action": "fuzzy_select",
+            "params": { "query": "@user_input", "choices": "@project_folders" },
+            "store_as": "project_name",
+            "func": true
+        },
+        {
+            "action": "build_path",
+            "params": { "parent_name": "projects", "folder": "@project_name" },
+            "store_as": "project_path",
+            "func": true
+        },
+        {
+            "action": "list_instances",
+            "params": { "app_name": "explorer" },
+            "store_as": "instances",
+            "fetch": "instances"
+        },
+        {
+            "action": "find_instance",
+            "params": { "instances": "@instances", "query": "@project_name", "key": "title" },
+            "store_as": "explorer_instance",
+            "func": true
+        },
+        {
+            "action": "open_app",
+            "params": { "app_name": "explorer", "folder_path": "@project_path" },
+            "is_running": "@explorer_instance",
+            "running_action": {
+                "action": "focus_app",
+                "params": { "app_name": "explorer", "title": "@project_name" }
+            }
+        },
+        {
+            "action": "list_instances",
+            "params": { "app_name": "vscode" },
+            "store_as": "instances",
+            "fetch": "instances"
+        },
+        {
+            "action": "find_instance",
+            "params": { "instances": "@instances", "query": "@project_name", "key": "title" },
+            "store_as": "vscode_instance",
+            "func": true
+        },
+        {
+            "action": "open_app",
+            "params": { "app_name": "vscode", "folder_path": "@project_path" },
+            "is_running": "@vscode_instance",
+            "running_action": {
+                "action": "focus_app",
+                "params": { "app_name": "vscode", "title": "@project_name" }
+            }
+        }
+    ]
+}

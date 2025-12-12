@@ -1,31 +1,7 @@
 from rapidfuzz import process
 from pathlib import Path
-
-
-
-
-
-
-
-
-TEMPLATES = {
-    "start_project": [
-        {"action": "list_folder_contents", "params": {"folder_name": "projects"}, "store_as": "project_folders", "fetch": "folders"},  # list all projects
-        {"action": "fuzzy_select", "params": {"query": "@user_input", "choices": "@project_folders"}, "store_as": "project_name", "func": True},  # select one folder which is the best similar
-        {"action": "build_path", "params": {"parent_name": "projects", "folder": "@project_name"}, "store_as": "project_path", "func": True},  
-
-        {"action": "list_instances", "params": {"app_name": "explorer"}, "fetch": "instances", "store_as": "instances"},
-        {"action": "find_instance", "params": {"instances": "@instances", "query": "@project_name", "key": "title"}, "store_as": "explorer_instance", "func": True},
-        {"action": "open_app", "params": {"app_name": "explorer", "folder_path": "@project_path"}, "is_running": "@explorer_instance", "running_action": {"action": "focus_app", "params": {"app_name": "explorer", "title": "@project_name"}}},  # open explorer with the path
-
-        {"action": "list_instances", "params": {"app_name": "vscode"}, "fetch": "instances", "store_as": "instances"},
-        {"action": "find_instance", "params": {"instances": "@instances", "query": "@project_name", "key": "title"}, "store_as": "vscode_instance", "func": True},
-        {"action": "open_app", "params": {"app_name": "vscode", "folder_path": "@project_path"}, "is_running": "@vscode_instance", "running_action": {"action": "focus_app", "params": {"app_name": "vscode", "title": "@project_name"}}} # open vscode with the path
-    ]
-}
-
-
-
+import json
+from configs.config import TEMPLATES_PATH
 
 
 
@@ -33,98 +9,107 @@ class Planner:
     def __init__(self, registry, client):
         self.modules = registry.get("modules", {})
         self.file_registry = registry.get("file_registry", {})
+        self.TEMPLATES = self._load_templates()
         self.client = client
 
 
-    def get_plan(self, user_input):
-        return {
-            "action"
-        }
-    
-    
+    # ---------------------- PUBLIC API ----------------------
+
     def run_plan(self, user_input: str, task: str):
-        actions = TEMPLATES.get(task)
+        actions = self.TEMPLATES.get(task)
+        if not actions:
+            raise ValueError(f"No template found for: {task}")
+
         results = {}
-        
 
         for action in actions:
-            params = {}
-            print("*********************", action.get("action"))
-            is_running = action.get("is_running", False)
+            action_name = action["action"]
 
-            if isinstance(is_running, str) and is_running.startswith("@"):
-                is_running = is_running[1:]  # remove @
-                is_running = results.get(is_running)
-       
-            if is_running:
-                running_action = action.get("running_action", None)
-                func = running_action.get("func", None) if running_action else None
-                if not func:
-                    params = running_action["params"]
-                    if params:
-                        for key, value in params.items():
-                            if isinstance(value, str) and value.startswith("@"):
-                                params[key] = results[value[1:]]
-                    res = self.client.trigger(running_action["action"], running_action["params"])
-                    print(res)
+            if self._should_handle_running(action, results):
+                self._execute_running_action(action, results)
                 continue
-            
-            # -------------------------
-            # PARAMETER RESOLUTION
-            # -------------------------
-            for key, raw_val in action.get("params", {}).items():
+            print(">>>>>>>", action.get("params", {}))
+            params = self._resolve_params(action.get("params", {}), results, user_input)
+            output = self._execute_action(action, params)
 
-                # 1) Direct literal protected with #
-                if isinstance(raw_val, str) and raw_val.startswith("#"):
-                    params[key] = raw_val[1:]  # strip #
-
-                # 2) Variable substitution: @something
-                elif isinstance(raw_val, str) and raw_val.startswith("@"):
-                    var_name = raw_val[1:]  # remove @
-                    params[key] = (
-                        user_input if var_name == "user_input" 
-                        else results.get(var_name)
-                    )
-                    # print(params)
-
-                # 3) Plain literal
-                else:
-                    params[key] = raw_val
-
-            # -------------------------
-            # EXECUTION
-            # -------------------------
-            if action.get("func"):
-                # backend function
-                fn = getattr(self, action["action"])
-                output = fn(**params)
-            else:
-                # windows-side action
-                res = self.client.trigger(action["action"], params)
-
-                # extract fetched payload
-                fetch_key = action.get("fetch")
-                if fetch_key:
-                    output = res["result"]["data"].get(fetch_key)
-                else:
-                    output = None
-
-            # -------------------------
-            # STORE
-            # -------------------------
             if "store_as" in action:
-                # print(output)
                 results[action["store_as"]] = output
-            
 
         return results
 
 
-    
+    # ---------------------- PARAMETER RESOLUTION ----------------------
 
-    
+    def _resolve_params(self, raw_params, results, user_input):
+        params = {}
+
+        for key, raw_val in raw_params.items():
+            if isinstance(raw_val, str):
+                if raw_val.startswith("#"):
+                    params[key] = raw_val[1:]
+
+                elif raw_val.startswith("@"):
+                    var_name = raw_val[1:]
+                    params[key] = user_input if var_name == "user_input" else results.get(var_name)
+
+                else:
+                    params[key] = raw_val
+            else:
+                params[key] = raw_val
+
+        return params
+
+
+    # ----------------- RUNNING INSTANCE HANDLING -----------------
+
+    def _should_handle_running(self, action, results):
+        is_running = action.get("is_running")
+        if not is_running:
+            return False
+
+        if isinstance(is_running, str) and is_running.startswith("@"):
+            key = is_running[1:]
+            return results.get(key) is not None
+
+        return bool(is_running)
+
+
+    def _execute_running_action(self, action, results):
+        running_action = action.get("running_action")
+        if not running_action:
+            return
+
+        params = self._resolve_params(running_action.get("params", {}), results, None)
+        self.client.trigger(running_action["action"], params)
+
+
+    # ---------------------- EXECUTION LOGIC ----------------------
+
+    def _execute_action(self, action, params):
+        if action.get("func"):  # internal python method
+            fn = getattr(self, action["action"])
+            return fn(**params)
+
+        # client-side Windows action
+        res = self.client.trigger(action["action"], params)
+        # print(res)
+
+        fetch = action.get("fetch")
+        if fetch:
+            return res["result"]["data"].get(fetch)
+
+        return None
+
+  
+    # ---------------------- INTERNAL FUNCTIONS ----------------------
+
+    def _load_templates(self):
+        with open(TEMPLATES_PATH, "r") as file:
+            return json.load(file)
+        
+
     def fuzzy_select(self, query, choices):
-        match, score, index = process.extractOne(query, choices)
+        match, score, idx = process.extractOne(query, choices)
         return match
 
 
@@ -132,40 +117,30 @@ class Planner:
         base = self.file_registry.get(parent_name)
         if not base:
             raise ValueError(f"No base path found for: {parent_name}")
+
         if not folder:
             raise ValueError("Folder name required")
 
         base_str = str(base)
 
-        # --- CASE 1: Parent is WSL path (/mnt/c/...) ---
+        # WSL-style /mnt/
         if base_str.startswith("/mnt/"):
-            # join using POSIX rules
-            if not base_str.endswith("/"):
-                base_str += "/"
-            return base_str + folder
+            return f"{base_str.rstrip('/')}/{folder}"
 
-        # --- CASE 2: Parent is UNC WSL path (\\wsl$\\Ubuntu\home...) ---
+        # UNC WSL \\wsl$\
         if base_str.lower().startswith("\\\\wsl$"):
-            # keep UNC format, join with backslashes only
-            if not base_str.endswith("\\") and not base_str.endswith("/"):
-                base_str += "\\"
-            return base_str + folder
+            return f"{base_str.rstrip('\\\\')}/{folder}".replace("/", "\\")
 
-        # --- CASE 3: Parent is Windows path (C:\...) ---
+        # Windows paths C:\
         if ":" in base_str:
             return str(Path(base_str) / folder)
 
         raise ValueError(f"Unrecognized path format: {base_str}")
+    
 
-        
     def find_instance(self, instances, query, key=None):
-        # print("&&&&&&&&&&&&&&&&&&", instances)
-        for instance in instances:
-            if key:
-                value = instance.get(key)
-                print(value)
-                if value and query in value:
-                    return instance
+        for inst in instances:
+            value = inst.get(key) if key else None
+            if value and query in value:
+                return inst
         return None
-
-
