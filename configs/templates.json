@@ -19,47 +19,24 @@
             "func": true
         },
         {
-            "action": "list_instances",
-            "params": { "app_name": "explorer" },
-            "store_as": "instances",
-            "fetch": "instances"
-        },
-        {
-            "action": "find_instance",
-            "params": { "instances": "@instances", "query": "@project_name", "key": "title" },
-            "store_as": "explorer_instance",
-            "func": true
-        },
-        {
-            "action": "open_app",
-            "params": { "app_name": "explorer", "folder_path": "@project_path" },
-            "is_running": "@explorer_instance",
-            "running_action": {
-                "action": "focus_app",
-                "params": { "app_name": "explorer", "title": "@project_name" }
+            "action": "focus_app", "params": {
+                "app_name": "explorer",
+                "query": "@project_name"
+            },
+
+            "fallback_action": {
+                "action": "open_folder",
+                "params": {"folder_path": "@project_path"}
             }
         },
         {
-            "action": "list_instances",
-            "params": { "app_name": "vscode" },
-            "store_as": "instances",
-            "fetch": "instances"
-        },
-        {
-            "action": "find_instance",
-            "params": { "instances": "@instances", "query": "@project_name", "key": "title" },
-            "store_as": "vscode_instance",
-            "func": true
-        },
-        {
-            "action": "open_app",
-            "params": { "app_name": "vscode", "folder_path": "@project_path" },
-            "is_running": "@vscode_instance",
-            "running_action": {
-                "action": "focus_app",
-                "params": { "app_name": "vscode", "title": "@project_name" }
+            "action": "open_focus_app", "params": {
+                "app_name": "vscode",
+                "query": "@project_name",
+                "folder_path": "@project_path"
             }
         }
+        
     ],
 
     "organize_folder": [
@@ -109,5 +86,15 @@
         {"action": "resolve_path", "params": {"path": "@path"}, "store_as": "file_path", "func": true},
         {"action": "open_folder", "params": {"folder_path": "@file_path::folder", "select_file": "@file_path::file"}}
 
+    ],
+
+    "play_anime": [
+        {
+            "action": "open_focus_app", "params": {
+                "app_name": "vlc",
+                "query": "VLC",
+                "folder_name": "@folder_name"
+            }
+        }
     ]
 }
