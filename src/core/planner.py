@@ -15,12 +15,13 @@ class Planner:
 
     # ---------------------- PUBLIC API ----------------------
 
-    def run_plan(self, user_input: str, task: str):
+    def run_plan(self, user_input: str, task: str, values: dict = {}):
         actions = self.TEMPLATES.get(task)
         if not actions:
             raise ValueError(f"No template found for: {task}")
 
         results = {}
+        results.update(values)
 
         for action in actions:
             action_name = action["action"]
@@ -30,7 +31,12 @@ class Planner:
                 continue
 
             params = self._resolve_params(action.get("params", {}), results, user_input)
-            output = self._execute_action(action, params)
+            status, output = self._execute_action(action, params)
+           
+            if not status and action.get("fallback_action", None):
+                fallback_action = action.get("fallback_action")
+                params = self._resolve_params(fallback_action["params"], results, user_input)
+                status, output = self._execute_action(fallback_action, params)
 
             if "store_as" in action:
                 results[action["store_as"]] = output
@@ -53,7 +59,6 @@ class Planner:
                     if "::" in var_name:
                         var_name, key_arg = var_name.split("::")
                         params[key] = results[var_name].get(key_arg)
-                        print(">>>>>>>", key, results[var_name].get(key_arg))
                     else:
                         params[key] = user_input if var_name == "user_input" else results.get(var_name)
 
@@ -91,18 +96,19 @@ class Planner:
     # ---------------------- EXECUTION LOGIC ----------------------
 
     def _execute_action(self, action, params):
-        if action.get("func"):  # internal python method
+        if action.get("func", None):  # internal python method
             fn = getattr(self, action["action"])
-            return fn(**params)
+            return True, fn(**params)
 
         # client-side Windows action
         res = self.client.trigger(action["action"], params)
-
-        fetch = action.get("fetch")
-        if fetch:
-            return res["result"]["data"].get(fetch)
-
-        return res["result"]["data"]
+  
+        try:
+            fetch = action.get("fetch", None)
+            data = res["result"]["data"].get(fetch) if fetch else res["result"]["data"]
+            return res["result"]["success"], data
+        except:  # Exception as e:
+            return False, res
 
   
     # ---------------------- INTERNAL FUNCTIONS ----------------------
