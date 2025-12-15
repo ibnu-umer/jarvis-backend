@@ -1,5 +1,4 @@
-import requests
-import subprocess
+import subprocess, httpx
 from src.core.logger import logger
 
 
@@ -19,32 +18,35 @@ class WindowsClient:
             raise RuntimeError("Unable to detect Windows host IP from WSL") from e
         
 
-    def trigger(self, action, params=None, timeout=5):
+    async def trigger(self, action, params=None, _async=False, timeout=5):
         params = params or {}
         url = f"{self.base_url}/action/{action}"
         try:
-            resp = requests.post(url, json=params, timeout=timeout)
-            resp.raise_for_status()
-            logger.info(f"Triggered action '{action}' with params: {params}")
-            return resp.json()
-        except requests.Timeout:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                resp = await client.post(url, json=params)
+                resp.raise_for_status()
+                logger.info(f"Triggered action '{action}' with params: {params}")
+                return resp.json()
+        except httpx.TimeoutException:
             logger.warning(f"Request timed out after {timeout}s for action '{action}'")
             return {"error": f"Request timed out after {timeout}s. Windows listener may be offline."}
-        except requests.ConnectionError:
+        except httpx.ConnectError:
             logger.error(f"Cannot connect to Windows listener at {self.base_url}")
             return {"error": "Cannot connect to Windows listener. Is it running?"}
-        except requests.RequestException as e:
+        except httpx.HTTPStatusError as e:
             logger.error(f"Request failed for action '{action}': {str(e)}")
             return {"error": f"Request failed: {str(e)}"}
         
 
-    def load_registry(self, timeout=5):
+    async def load_registry(self, timeout=5):
         url = f"{self.base_url}/registry"
         try:
-            resp = requests.get(url, timeout=timeout)
-            resp.raise_for_status()
-            logger.info(f"Loaded action registry")
-            return resp.json()
-        except requests.RequestException as e:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                resp = await client.get(url)
+                resp.raise_for_status()
+                logger.info("Loaded action registry")
+                return resp.json()
+
+        except httpx.RequestError as e:
             logger.error(f"Failed to load registry from {self.base_url}: {str(e)}")
             return {}
