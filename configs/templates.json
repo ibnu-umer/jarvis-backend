@@ -82,19 +82,8 @@
     ],
 
     "open_copied_path": [
-        {"action": "get_copied_path", "store_as": "path", "func": true},
-        {"action": "resolve_path", "params": {"path": "@path"}, "store_as": "file_path", "func": true},
+        {"action": "get_copied_value", "params": {"_as": "path"}, "store_as": "file_path", "success": false},
         {"action": "open_folder", "params": {"folder_path": "@file_path::folder", "select_file": "@file_path::file"}}
 
-    ],
-
-    "play_anime": [
-        {
-            "action": "open_focus_app", "params": {
-                "app_name": "vlc",
-                "query": "VLC",
-                "folder_name": "@folder_name"
-            }
-        }
     ]
 }
