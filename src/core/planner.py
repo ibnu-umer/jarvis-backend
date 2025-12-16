@@ -1,7 +1,8 @@
+import json, os
 from rapidfuzz import process
 from pathlib import Path
-import json, pyperclip, os
 from configs.config import TEMPLATES_PATH
+from src.core.logger import logger
 
 
 
@@ -15,7 +16,7 @@ class Planner:
 
     # ---------------------- PUBLIC API ----------------------
 
-    def run_plan(self, user_input: str, task: str, values: dict = {}):
+    async def run_plan(self, user_input: str, task: str, values: dict = {}):
         actions = self.TEMPLATES.get(task)
         if not actions:
             raise ValueError(f"No template found for: {task}")
@@ -31,12 +32,17 @@ class Planner:
                 continue
 
             params = self._resolve_params(action.get("params", {}), results, user_input)
-            status, output = self._execute_action(action, params)
+            status, output, message = await self._execute_action(action, params)
            
             if not status and action.get("fallback_action", None):
                 fallback_action = action.get("fallback_action")
                 params = self._resolve_params(fallback_action["params"], results, user_input)
-                status, output = self._execute_action(fallback_action, params)
+                status, output, message = await self._execute_action(fallback_action, params)
+
+            if not status:
+                logger.info("Plan running stopped")
+                logger.info(f"{action_name} failed: {message}")
+                break
 
             if "store_as" in action:
                 results[action["store_as"]] = output
@@ -95,20 +101,20 @@ class Planner:
 
     # ---------------------- EXECUTION LOGIC ----------------------
 
-    def _execute_action(self, action, params):
+    async def _execute_action(self, action, params):
         if action.get("func", None):  # internal python method
             fn = getattr(self, action["action"])
             return True, fn(**params)
 
         # client-side Windows action
-        res = self.client.trigger(action["action"], params)
-  
+        res = await self.client.trigger(action["action"], params)
+        
         try:
             fetch = action.get("fetch", None)
             data = res["result"]["data"].get(fetch) if fetch else res["result"]["data"]
-            return res["result"]["success"], data
-        except:  # Exception as e:
-            return False, res
+            return res["result"]["success"], data, res["result"]["message"]
+        except Exception as e:
+            return False, res, str(e)
 
   
     # ---------------------- INTERNAL FUNCTIONS ----------------------
@@ -194,43 +200,3 @@ class Planner:
         name_part = title.split("-")[1]
         return name_part.replace("[WSL: Ubuntu]", "") if "[WSL: Ubuntu]" in name_part else name_part
 
-
-    def get_copied_path(self):
-        try:
-            copied_path = pyperclip.paste().strip()
-            return self.build_path(path=copied_path)
-        except Exception as e:
-            return None
-        
-
-    def resolve_path(self, path: str):
-        if not path:
-            raise ValueError("No path provided")
-
-        raw_path = path.strip()
-
-        # Convert Windows path to WSL style for existence check
-        check_path = raw_path
-        if ":" in raw_path and "\\" in raw_path:
-            drive = raw_path[0].upper()
-            rest = raw_path[2:].replace("\\", "/")
-            check_path = f"/mnt/{drive.lower()}/{rest}"
-
-        path_obj = Path(check_path)
-
-        if not path_obj.exists():
-            raise ValueError(f"Path does not exist: {raw_path}")
-
-        # Convert back to Windows-style for return
-        def to_windows(p: Path):
-            p_str = str(p)
-            if p_str.startswith("/mnt/") and len(p_str) > 5:
-                drive_letter = p_str[5].upper()
-                rest = p_str[7:].replace("/", "\\")
-                return f"{drive_letter}:\\" + rest
-            return str(p)
-
-        if path_obj.is_file():
-            return {"folder": to_windows(path_obj.parent), "file": path_obj.name}
-
-        return {"folder": to_windows(path_obj), "file": None}
