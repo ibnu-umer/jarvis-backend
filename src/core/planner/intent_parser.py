@@ -30,6 +30,25 @@ class IntentParser:
         self.label_encoder = joblib.load("src/models/label_encoder.pkl")
 
 
+
+    def temp_parse(self, user_input: str) -> Intent:
+        text = user_input.lower()
+
+        if "setup" in text and "project" in text:
+            return Intent(action="start_project")
+
+        if "open" in text and "project" in text:
+            return Intent(action="open_project")
+
+        if "prepare" in text and "work" in text:
+            return Intent(action="prepare_work_environment")
+        
+        if "open copied path" in text:
+            return Intent(action="open_copied_path")
+
+        return None
+
+
     def parse(self, user_input: str) -> Intent:
         text = user_input.lower()
         intent, confidence = self.predict_intent(text)
