@@ -1,5 +1,6 @@
 from core.responses import success, failure
 from core.client import WindowsClient
+from core.planner import Planner
 from core.logger import logger
 
 
@@ -8,6 +9,7 @@ from core.logger import logger
 class Dispatcher:
     def __init__(self):
         self.windows_client = WindowsClient()
+        self.planner = Planner()
         self.registry = {} 
         self.load_registry()
 

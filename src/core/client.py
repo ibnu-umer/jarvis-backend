@@ -18,7 +18,8 @@ class WindowsClient:
             raise RuntimeError("Unable to detect Windows host IP from WSL") from e
         
 
-    async def trigger(self, action, params=None, _async=False, timeout=5):
+    async def trigger(self, action, params=None, timeout=5):
+        # print("in trigger >>>>>>>>>>>", action, params)
         params = params or {}
         url = f"{self.base_url}/action/{action}"
         try:
@@ -50,3 +51,7 @@ class WindowsClient:
         except httpx.RequestError as e:
             logger.error(f"Failed to load registry from {self.base_url}: {str(e)}")
             return {}
+        
+
+    async def close(self):
+        pass
