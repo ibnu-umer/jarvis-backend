@@ -6,3 +6,5 @@ output/
 venv/
 
 *.code-workspace
+
+test.py
