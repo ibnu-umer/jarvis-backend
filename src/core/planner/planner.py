@@ -2,7 +2,9 @@ from src.core.planner.intent_parser import IntentParser
 from src.core.planner import templates
 from dataclasses import dataclass
 from typing import Dict, Any
-
+from src.core.logger import logger
+from src.core.planner.templates import TEMPLATE_REGISTRY
+import importlib
 
 
 
@@ -32,23 +34,19 @@ class Planner:
     def plan(self, planner_input):
         intent_obj = self.intent_parser.temp_parse(planner_input.user_input)
         intent = intent_obj.action
+        logger.info(f"intent: {intent_obj}")
 
-        if intent is None:
-            raise RuntimeError("Planner cannot handle this intent")
+        # handle templates
+        func_info = TEMPLATE_REGISTRY.get(intent) if intent in TEMPLATE_REGISTRY else None
+        if func_info:
+            module = importlib.import_module(func_info["module"])
+            graph = getattr(module, func_info["function"])()
+            return graph
 
-        if intent == "prepare_work_environment":
-            graph = templates.prepare_work_environment()
-        elif intent == "start_project":
-            graph = templates.start_project()
-        elif intent == "open_copied_path":
-            graph = templates.open_copied_path()
-        else:
-            raise RuntimeError("Unhandled intent")
-
-        # validate_graph(graph, planner_input.available_actions)
-        return graph
-   
-
+        if intent == "fallback":
+            intent_obj = self.intent_parser.parse(planner_input.user_input)
+        
+        return intent_obj
 
 
 

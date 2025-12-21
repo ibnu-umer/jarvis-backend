@@ -22,7 +22,22 @@ class Executor:
         self.state = state_provider
         self.file_registry = file_registry
 
-    async def execute(self, user_input: str, graph: dict) -> ExecutionResult:
+    async def execute(self, user_input: str, plan) -> ExecutionResult:
+        try:
+            res = await self._execute_action(user_input, plan)
+        except AttributeError:
+            res = await self._execute_graph(user_input, plan)
+        
+        return res
+
+
+
+    async def _execute_action(self, user_input, action) -> ExecutionResult:
+        res = await self.controller.trigger(action.action, action.params)
+        return res
+
+
+    async def _execute_graph(self, user_input, graph) -> ExecutionResult:
         tg = graph["task_graph"]
         nodes = tg["nodes"]
         current = tg["entry"]

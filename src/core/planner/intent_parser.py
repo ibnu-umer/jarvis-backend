@@ -46,7 +46,7 @@ class IntentParser:
         if "open copied path" in text:
             return Intent(action="open_copied_path")
 
-        return None
+        return Intent(action="fallback")
 
 
     def parse(self, user_input: str) -> Intent:
@@ -55,7 +55,7 @@ class IntentParser:
 
         logger.debug(f"Predicted intent={intent}, confidence={confidence}")
 
-        if confidence < self.CONF_THRESHOLD:
+        if confidence < self.CONF_THRESHOLD and intent not in user_input:
             return Intent("fallback", confidence=confidence)
 
         if intent == "open":
@@ -161,3 +161,8 @@ class IntentParser:
         confidence = float(abs(pred[0][idx]))
 
         return intent, confidence
+
+
+
+
+    # --------------- TASK LEVEL PARSING -------------------

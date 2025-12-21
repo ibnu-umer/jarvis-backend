@@ -1,7 +1,20 @@
 
+TEMPLATE_REGISTRY = {}
+
+def template(name=None, params=None):
+    def wrapper(func):
+        module = func.__module__
+        TEMPLATE_REGISTRY[name or func.__name__] = {
+            "module": module,
+            "function": func.__name__,
+            "params": params or []
+        }
+        return func
+    return wrapper
 
 
 
+@template(name="prepare_work_environment")
 def prepare_work_environment() -> dict:
     return {
         "version": 1.0,
@@ -42,6 +55,7 @@ def prepare_work_environment() -> dict:
     }
 
 
+@template(name="setup_video_player", params={"folder_name"})
 def setup_video_player(folder_name: str) -> dict:
     return {
         "version": 1.0,
@@ -74,7 +88,7 @@ def setup_video_player(folder_name: str) -> dict:
         }
     }
 
-
+@template(name="open_copied_path")
 def open_copied_path() -> dict:
     return {
         "version": 1.0,
@@ -95,7 +109,7 @@ def open_copied_path() -> dict:
     }
 
 
-
+@template(name="open_terminal_here")
 def open_terminal_here() -> dict:
     return {
         "version": 1.0,
@@ -154,7 +168,7 @@ def open_terminal_here() -> dict:
     }
 
 
-
+@template(name="start_project")
 def start_project() -> dict:
     return {
         "version": 1.0,
@@ -240,7 +254,7 @@ def start_project() -> dict:
     }
 
 
-
+@template(name="organize_folder")
 def organize_folder() -> dict:
     return {
         "version": 1.0,
@@ -285,7 +299,7 @@ def organize_folder() -> dict:
     }
 
 
-
+@template(name="open_copied_path")
 def open_copied_path() -> dict:
     return {
         "version": 1.0,
