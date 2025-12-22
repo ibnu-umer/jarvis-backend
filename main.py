@@ -4,6 +4,7 @@ try:
     from src.core.executor import Executor
     from src.core.client import WindowsClient
     from src.core.state import StateProvider
+    from src.api.listener import WSLBackend
 except Exception as e:
     print(str(e))
     traceback.print_exc()
@@ -18,6 +19,8 @@ async def run():
         windows_client = WindowsClient()
         registry = await windows_client.load_registry()
         planner = Planner(registry)
+        listener = WSLBackend()
+        listener.start()
 
         state_provider = StateProvider()
         executor = Executor(
@@ -51,6 +54,8 @@ async def run():
                 print(str(e))
 
     except Exception as e:
+        await windows_client.close()
+        listener.stop()
         print(str(e))
 
 
