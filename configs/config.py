@@ -1,7 +1,7 @@
 WIN_HOST = "127.0.0.1"
 WIN_PORT = 6001
 
-WSL_HOST = "0.0.0.0"   
+WSL_HOST = "172.29.130.227"   
 WSL_PORT = 6000
 
 PING_INTERVAL = 6  # seconds

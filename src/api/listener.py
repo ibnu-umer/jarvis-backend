@@ -7,6 +7,8 @@ import threading
 from configs.config import WSL_HOST, WSL_PORT
 from src.core.logger import logger
 from src.run_pipeline import run_pipeline
+from src.core.executor import ExecutionResult
+from src.core.intent_parser import Intent
 
 
 
@@ -39,12 +41,12 @@ class WSLBackend:
     def _setup_routes(self):
         @self.app.get("/health")
         def health():
+            # logger.debug("Health status: True")
             self.state["last_checked"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             return self.state
 
         @self.app.post("/command", response_model=CommandResponse)
         async def handle_command(req: CommandRequest):
-            print(req)
             try:
                 plan, result = await run_pipeline(
                     req.user_input,
@@ -54,7 +56,7 @@ class WSLBackend:
                 return {
                     "plan": plan,
                     "result": result,
-                    "status": "ok"
+                    "status": "success",
                 }
             except Exception as e:
                 logger.exception("Command execution failed")
@@ -63,6 +65,14 @@ class WSLBackend:
                     "result": {"error": str(e)},
                     "status": "error"
                 }
+            
+        @self.app.get("/test")
+        def test():
+            logger.debug("Test status: True")
+            return {
+                "test": "success"
+            }
+
 
     def _run(self):
         uvicorn.run(
